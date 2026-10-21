@@ -1,0 +1,14 @@
+{
+  "tb_wmfw": {
+    "sha256": "c11cb3e25825c673a955a3519370ad77fbcd8bcf68808e8e34140a70caefcec4",
+    "size": 34068
+  },
+  "tb_left": {
+    "sha256": "0a97ac8517a2f887b0c7a2f134d34b01b7e8319f4458396272aa5a3c3470098f",
+    "size": 5496
+  },
+  "tb_right": {
+    "sha256": "68e4be139b5f6459d0714c9f0cf03fdc5922f8ed4e3205229b2418b55637e13c",
+    "size": 5496
+  }
+}

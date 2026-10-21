@@ -1,0 +1,4 @@
+const FirmwareResource cs35l41Firmware[]={
+ {0x17AA,0x38F9,1,"ThinkBook17AA38F9-normal.wmfw","ThinkBook17AA38F9-normal.bin",tb_wmfw,sizeof(tb_wmfw),tb_left,sizeof(tb_left),tb_right,sizeof(tb_right),false}
+};
+const size_t cs35l41FirmwareCount=sizeof(cs35l41Firmware)/sizeof(cs35l41Firmware[0]);

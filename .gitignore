@@ -1,0 +1,14 @@
+/local/
+/deps/
+/build/
+/dist/
+*.kext/
+*.dSYM/
+.DS_Store
+__pycache__/
+**/xcuserdata/
+**/MachineIdentity.hpp
+**/Firmware.hpp
+*.wmfw
+*.bin
+*.zip

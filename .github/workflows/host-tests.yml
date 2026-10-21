@@ -1,0 +1,10 @@
+name: Host logic tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  host-tests:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash tools/test.sh

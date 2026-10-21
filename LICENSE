@@ -1,0 +1,8 @@
+This repository contains separately licensed components.
+
+CirrusAudioFixup derivative: licenses/CirrusAudioFixup-LICENSE.txt (non-commercial software redistribution).
+AppleALC derivative/resources: licenses/AppleALC-LICENSE.txt (BSD 3-Clause).
+Original documentation/tooling: licenses/Project-BSD-3-Clause.txt (BSD 3-Clause).
+Firmware is excluded and is NOT licensed by these notices.
+
+See THIRD_PARTY_NOTICES.md for attribution and scope. No blanket license overrides component licenses.

@@ -1,0 +1,76 @@
+--- a/AppleALC/kern_alc.cpp
++++ b/AppleALC/kern_alc.cpp
+@@ -16,8 +16,11 @@
+ 
+ #include "kern_alc.hpp"
+ #include "kern_resources.hpp"
++#include "ThinkBookTweeterMirror.hpp"
++#include "MachineIdentity.hpp"
+ 
+ static AlcEnabler alcEnabler;
++static IOLock *thinkBookTweeterLock=nullptr;
+ 
+ // Only used in apple-driven callbacks
+ AlcEnabler* AlcEnabler::callbackAlc = nullptr;
+@@ -33,6 +36,7 @@
+ }
+ 
+ void AlcEnabler::init() {
++	thinkBookTweeterLock=IOLockAlloc();
+ 
+ 	lilu.onPatcherLoadForce(
+ 	[](void *user, KernelPatcher &patcher) {
+@@ -391,7 +395,52 @@
+ 		// 4 bit verb
+ 		DBGLOG("alc", "IOHDACodecDevice::executeVerb with parameters nid = 0x%02X, verb = 0x%X, param = 0x%04X", nid, verb, param);
+ 	}
+-	return FunctionCast(IOHDACodecDevice_executeVerb, callbackAlc->orgIOHDACodecDevice_executeVerb)(hdaCodecDevice, nid, verb, param, output, waitForSuccess);
++ auto original=FunctionCast(IOHDACodecDevice_executeVerb, callbackAlc->orgIOHDACodecDevice_executeVerb);
++ IOReturn result=original(hdaCodecDevice,nid,verb,param,output,waitForSuccess);
++ // Follow only completed state-changing commands; diagnostic reads remain read-only.
++ bool event=(nid==2||nid==0x17||nid==0x21||nid==1)&&
++  (verb==0x705||verb==0x707||verb==0x706||verb==2||verb==3||verb==0x200||verb==0x300);
++ if(result==kIOReturnSuccess&&event){
++  static ThinkBookTweeterState state;
++  static void *owner=nullptr;
++  IOLock *lock=thinkBookTweeterLock;
++  if(lock){
++   IOLockLock(lock);
++   if(!owner){
++    // Exact local port calibration/address gate; do not enable on other ALC287 boards.
++    auto match=IOService::serviceMatching("CirrusAudioFixup");
++    auto iterator=match?IOService::getMatchingServices(match):nullptr;
++    if(match)match->release();
++    if(iterator){
++     while(auto service=OSDynamicCast(IOService,iterator->getNextObject())){
++      auto left=OSDynamicCast(OSDictionary,service->getProperty("ThinkBook_Telemetry_left"));
++      auto right=OSDynamicCast(OSDictionary,service->getProperty("ThinkBook_Telemetry_right"));
++      auto number=[](OSDictionary *d,const char *key)->unsigned {auto n=d?OSDynamicCast(OSNumber,d->getObject(key)):nullptr;return n?n->unsigned32BitValue():0;};
++      unsigned codec=0;
++      if(number(left,"CAL_R")==TB_CAL_R_LEFT&&number(right,"CAL_R")==TB_CAL_R_RIGHT&&number(left,"I2CAddress")==65&&number(right,"I2CAddress")==64&&
++       original(hdaCodecDevice,0,0xf00,0,&codec,false)==kIOReturnSuccess&&codec==0x10ec0287){owner=hdaCodecDevice;break;}
++     }iterator->release();
++    }
++   }
++   if(owner==hdaCodecDevice){
++    struct IO {
++     decltype(original) call;void *codec;
++     void wait(){IOSleep(20);}
++     bool get(unsigned n,unsigned v,unsigned a,unsigned &out){return call(codec,n,(v&255)?v:v>>8,a,&out,false)==kIOReturnSuccess;}
++     bool set(unsigned v,unsigned a){
++      if(!((v==0x705&&(a==0||a==3))||(v==0x707&&(a==0||a==0x40))||
++        (v==0x300&&(a==0xb000||a==0xa080||a==0x9080))))return false;
++      unsigned ignored=0;return call(codec,0x14,(v&255)?v:v>>8,a,&ignored,false)==kIOReturnSuccess;
++     }
++    }io{original,hdaCodecDevice};
++    state.update(io);
++    auto entry=static_cast<IOService*>(hdaCodecDevice);
++    entry->setProperty("ThinkBookTweeterMirror",state.fault?"FAULT_DISABLED":state.owned?"ACTIVE":"IDLE");
++   }
++   IOLockUnlock(lock);
++  }
++ }
++ return result;
+ }
+ 
+ uint32_t AlcEnabler::getAudioLayout(IOService *hdaDriver) {
